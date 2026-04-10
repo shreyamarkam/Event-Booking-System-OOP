@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>TicketFlow — Event Ticket Booking System</title>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="style.css">
+
+</head>
+<body>
+<div class="shell">
+
+  <!-- HEADER -->
+  <header>
+    <div class="logo">
+      <div class="logo-icon">
+        <svg viewBox="0 0 24 24"><path d="M20 12v7a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-7a2 2 0 0 0 0-4V5a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v3a2 2 0 0 0 0 4z"/></svg>
+      </div>
+      <div>
+        <div class="logo-name">TicketFlow</div>
+        <div class="logo-sub">NIT Silchar · OOP Project</div>
+      </div>
+    </div>
+    <nav class="nav">
+      <button class="nav-btn active" onclick="switchTab('events')">Events</button>
+      <button class="nav-btn" id="history-tab-btn" onclick="switchTab('history')">History <span class="badge-count" id="history-cnt" style="display:none">0</span></button>
+      <button class="nav-btn" onclick="openAddEvent()">Add Event</button>
+    </nav>
+  </header>
+
+  <!-- STATS -->
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-label">Total bookings</div>
+      <div class="stat-val amber" id="stat-bookings">0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Seats booked</div>
+      <div class="stat-val" id="stat-seats">0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Revenue (₹)</div>
+      <div class="stat-val" id="stat-revenue">0</div>
+    </div>
+  </div>
+
+  <!-- EVENTS -->
+  <div class="events-wrap" id="events-wrap">
+    <div class="section-hd">
+      <div class="section-title">Available events</div>
+      <div style="font-size:12px;color:var(--text-faint);">BookingSystem · 2 events loaded</div>
+    </div>
+    <div class="events-grid" id="events-grid"></div>
+  </div>
+
+  <!-- HISTORY -->
+  <div class="history-wrap" id="history-wrap">
+    <div class="section-hd">
+      <div class="section-title">Booking history</div>
+      <button class="btn btn-secondary" style="flex:none;padding:7px 14px;font-size:12px;" onclick="clearHistory()">Clear all</button>
+    </div>
+    <div id="history-list"></div>
+  </div>
+
+  <!-- CONSOLE -->
+  <div class="console-section">
+    <div class="section-hd" style="margin-bottom:0.75rem;">
+      <div class="section-title">System console</div>
+      <span style="font-size:11px;color:var(--text-faint);font-family:'DM Mono',monospace;">mutex · multithreading · exceptions</span>
+    </div>
+    <div class="console-box" id="console-box">
+      <div class="log-line system">// BookingSystem initialised · 2 events · 2 event types (ConcertEvent, MovieEvent)</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- BOOK MODAL -->
+<div class="overlay" id="book-overlay">
+  <div class="modal">
+    <div class="modal-hd">
+      <div>
+        <div id="m-badge" class="etype-badge"></div>
+        <div class="modal-title" id="m-name"></div>
+        <div class="modal-sub" id="m-meta"></div>
+      </div>
+      <button class="close-btn" onclick="closeModals()">✕</button>
+    </div>
+    <div class="form-grp">
+      <label class="form-lbl">Your name</label>
+      <input class="form-input" type="text" id="inp-name" placeholder="e.g. User1, User2 …" />
+    </div>
+    <div class="form-grp">
+      <label class="form-lbl">Number of seats</label>
+      <div class="seat-ctrl">
+        <button class="seat-adj" onclick="adjSeats(-1)">−</button>
+        <div class="seat-num" id="seat-disp">1</div>
+        <button class="seat-adj" onclick="adjSeats(1)">+</button>
+        <span class="avail-tag" id="avail-tag"></span>
+      </div>
+    </div>
+    <div class="price-box">
+      <div class="price-line"><span>Price per seat</span><span id="m-unit-price"></span></div>
+      <div class="price-line"><span>Seats</span><span id="m-seat-count"></span></div>
+      <div class="price-total"><span>Total</span><span id="m-total"></span></div>
+    </div>
+    <button class="modal-action" id="m-confirm-btn" onclick="confirmBook()">Confirm Booking</button>
+  </div>
+</div>
+
+<!-- CANCEL MODAL -->
+<div class="overlay" id="cancel-overlay">
+  <div class="modal">
+    <div class="modal-hd">
+      <div>
+        <div id="cm-badge" class="etype-badge"></div>
+        <div class="modal-title" id="cm-name"></div>
+        <div class="modal-sub" id="cm-meta"></div>
+      </div>
+      <button class="close-btn" onclick="closeModals()">✕</button>
+    </div>
+    <div class="form-grp">
+      <label class="form-lbl">Your name</label>
+      <input class="form-input" type="text" id="cinp-name" placeholder="Enter the name used during booking" />
+    </div>
+    <div class="form-grp">
+      <label class="form-lbl">Seats to cancel</label>
+      <div class="seat-ctrl">
+        <button class="seat-adj" onclick="adjCancelSeats(-1)">−</button>
+        <div class="seat-num" id="cseat-disp">1</div>
+        <button class="seat-adj" onclick="adjCancelSeats(1)">+</button>
+      </div>
+    </div>
+    <button class="cancel-action" onclick="confirmCancel()">Cancel tickets</button>
+  </div>
+</div>
+
+<!-- ADD EVENT MODAL -->
+<div class="overlay" id="add-overlay">
+  <div class="modal">
+    <div class="modal-hd">
+      <div>
+        <div class="modal-title">Add New Event</div>
+        <div class="modal-sub">Create a new event</div>
+      </div>
+      <button class="close-btn" onclick="closeAddEvent()">✕</button>
+    </div>
+
+    <div class="form-grp">
+      <label class="form-lbl">Event Name</label>
+      <input class="form-input" id="e-name" placeholder="Concert / Movie" />
+    </div>
+
+    <div class="form-grp">
+      <label class="form-lbl">Date</label>
+      <input class="form-input" id="e-date" placeholder="YYYY-MM-DD" />
+    </div>
+
+    <div class="form-grp">
+      <label class="form-lbl">Venue</label>
+      <input class="form-input" id="e-venue" placeholder="City Hall" />
+    </div>
+
+    <div class="form-grp">
+      <label class="form-lbl">Price</label>
+      <input class="form-input" id="e-price" type="number" />
+    </div>
+
+    <div class="form-grp">
+      <label class="form-lbl">Total Seats</label>
+      <input class="form-input" id="e-seats" type="number" />
+    </div>
+
+    <button class="modal-action" onclick="submitEvent()">Add Event</button>
+  </div>
+</div>
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+<script src="script.js"></script>
+
+</body>
+</html>
