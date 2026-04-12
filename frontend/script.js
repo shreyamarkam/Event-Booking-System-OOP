@@ -245,48 +245,50 @@ function updateHistoryBadge() {
 }
 
 function openBook(id) {
+  console.log("openBook called", id);
+
   activeEvtId = id;
-  seatCount   = 1;
+  seatCount = 1;
+
   const ev = events.find(e => e.id == id);
-  if (!ev) { console.error("Event not found:", id); return; }
+  if (!ev) {
+    console.error("Event not found:", id);
+    return;
+  }
 
-  // Set badge color dynamically on the modal
-  const badge = document.getElementById('m-badge');
-  badge.className   = `etype-badge ${ev.type}`;
-  badge.textContent = ev.type === 'concert' ? '♪ Concert' : '▶ ' + ev.name;
-
-  // Style confirm button to match event type
-  const btn = document.getElementById('m-confirm-btn');
-  btn.className = `modal-action ${ev.type}`;
-
+  // Fill modal data
   document.getElementById('m-name').textContent = ev.name;
   document.getElementById('m-meta').textContent = `${ev.date} · ${ev.venue}`;
   document.getElementById('seat-disp').textContent = 1;
   document.getElementById('inp-name').value = '';
+
   updateBookPrice();
-  document.getElementById('book-overlay').classList.add('open');
+
+  // 🔥 IMPORTANT FIX
+  document.getElementById('book-overlay').style.display = "flex";
 }
 
 function openCancel(id) {
   activeEvtId = id;
-  cSeatCount  = 1;
+  cSeatCount = 1;
+
   document.getElementById('cseat-disp').textContent = 1;
   document.getElementById('cinp-name').value = '';
 
   const ev = events.find(e => e.id == id);
   if (ev) {
-    const badge = document.getElementById('cm-badge');
-    badge.className   = `etype-badge ${ev.type}`;
-    badge.textContent = ev.type === 'concert' ? '♪ Concert' : '▶ ' + ev.name;
     document.getElementById('cm-name').textContent = ev.name;
     document.getElementById('cm-meta').textContent = `${ev.date} · ${ev.venue}`;
   }
-  document.getElementById('cancel-overlay').classList.add('open');
+
+  // 🔥 IMPORTANT FIX
+  document.getElementById('cancel-overlay').style.display = "flex";
 }
 
 function closeModals() {
-  document.getElementById('book-overlay').classList.remove('open');
-  document.getElementById('cancel-overlay').classList.remove('open');
+  document.getElementById('book-overlay').style.display = "none";
+  document.getElementById('cancel-overlay').style.display = "none";
+  document.getElementById('payment-overlay').style.display = "none";
 }
 
 function openAddEvent()  { document.getElementById("add-overlay").classList.add("open"); }
@@ -311,23 +313,69 @@ function updateStats() {
 
 function renderHistory() {
   const list = document.getElementById('history-list');
+
   if (!bookings.length) {
     list.innerHTML = "<p style='color:gray;padding:1rem;'>No booking history yet</p>";
     return;
   }
+
   list.innerHTML = bookings.map(b => `
     <div class="history-item">
-      <div class="h-avatar ${guessType(b.eventName)}">${(b.user || '?')[0].toUpperCase()}</div>
+      <div class="h-avatar ${guessType(b.eventName)}">
+        ${(b.user || '?')[0].toUpperCase()}
+      </div>
+
       <div class="h-info">
         <div class="h-user">${b.user}</div>
         <div class="h-event">${b.eventName || 'Event #' + b.eventId}</div>
       </div>
+
       <div class="h-right">
         <div class="h-seats">${b.seats} seat${b.seats > 1 ? 's' : ''}</div>
         <div class="h-time">${b.time || ''}</div>
+
+        <!-- 🔥 NEW CANCEL BUTTON -->
+        <button class="btn btn-secondary"
+          onclick="quickCancel('${b.user}', ${b.eventId}, ${b.seats})">
+          Cancel
+        </button>
       </div>
     </div>
   `).join('');
+}
+
+async function quickCancel(user, eventId, seats) {
+  let res = await fetch("/cancel", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ user, eventId, seats })
+  });
+
+  let msg = await res.text();
+
+  if (msg === "CANCELLED") {
+    showToast("Cancelled successfully", "success");
+
+    // 🔥 FIX: update stats
+    const ev = events.find(e => e.id == eventId);
+    if (ev) {
+      statsSeat -= seats;
+      statsRev  -= seats * ev.price;
+      statsTotal -= 1;
+
+      if (statsSeat < 0) statsSeat = 0;
+      if (statsRev < 0) statsRev = 0;
+      if (statsTotal < 0) statsTotal = 0;
+    }
+
+    updateStats();
+
+    // refresh UI
+    loadEvents();
+    loadHistory();
+  } else {
+    showToast("Cancel failed", "error");
+  }
 }
 
 function showToast(msg, type) {
@@ -341,6 +389,73 @@ function showToast(msg, type) {
 async function init() {
   await loadEvents();
   await loadHistory();
+}
+
+function openPayment() {
+  document.getElementById('book-overlay').classList.remove('open');
+  document.getElementById('payment-overlay').style.display = "flex";
+
+  // reset fields
+  document.getElementById("upi-id").value = "";
+  
+  document.querySelectorAll("#card-fields input").forEach(i => i.value = "");
+  document.querySelectorAll("#net-fields input").forEach(i => i.value = "");
+
+  showPaymentFields(); // ensure correct fields visible
+}
+
+
+
+function showPaymentFields() {
+  let method = document.getElementById("payment-method").value;
+
+  document.getElementById("upi-fields").style.display = "none";
+  document.getElementById("card-fields").style.display = "none";
+  document.getElementById("net-fields").style.display = "none";
+
+  if (method === "UPI") {
+    document.getElementById("upi-fields").style.display = "block";
+  } else if (method === "Card") {
+    document.getElementById("card-fields").style.display = "block";
+  } else {
+    document.getElementById("net-fields").style.display = "block";
+  }
+}
+
+function processPayment() {
+  let method = document.getElementById("payment-method").value;
+
+  let valid = false;
+
+  if (method === "UPI") {
+    let upi = document.getElementById("upi-id").value;
+    if (upi.trim() !== "") valid = true;
+  }
+
+  else if (method === "Card") {
+    let inputs = document.querySelectorAll("#card-fields input");
+    valid = [...inputs].every(inp => inp.value.trim() !== "");
+  }
+
+  else if (method === "Net") {
+    let inputs = document.querySelectorAll("#net-fields input");
+    valid = [...inputs].every(inp => inp.value.trim() !== "");
+  }
+
+  if (!valid) {
+    showToast("Please fill all payment details", "error");
+    return;
+  }
+
+  // ✅ success
+  showToast("Payment successful via " + method, "success");
+
+  document.getElementById('payment-overlay').style.display = "none";
+
+  // VERY IMPORTANT
+  confirmBook();
+
+  switchTab('events');
 }
 
 init();

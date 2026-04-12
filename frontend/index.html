@@ -105,7 +105,7 @@
       <div class="price-line"><span>Seats</span><span id="m-seat-count"></span></div>
       <div class="price-total"><span>Total</span><span id="m-total"></span></div>
     </div>
-    <button class="modal-action" id="m-confirm-btn" onclick="confirmBook()">Confirm Booking</button>
+    <button class="modal-action" onclick="openPayment()">Proceed to Payment</button>
   </div>
 </div>
 
@@ -178,6 +178,50 @@
 <!-- TOAST -->
 <div class="toast" id="toast"></div>
 <script src="script.js"></script>
+
+<!-- PAYMENT MODAL -->
+<div class="overlay" id="payment-overlay" style="display:none;">
+  <div class="modal">
+
+    <div class="modal-hd">
+      <div>
+        <div class="modal-title">Payment</div>
+        <div class="modal-sub">Choose payment method</div>
+      </div>
+      <button class="close-btn" onclick="closeModals()">✕</button>
+    </div>
+
+    <!-- METHOD SELECT -->
+    <select id="payment-method" class="form-input" onchange="showPaymentFields()">
+      <option value="UPI">UPI</option>
+      <option value="Card">Card</option>
+      <option value="Net">Net Banking</option>
+    </select>
+
+    <!-- UPI -->
+    <div id="upi-fields" class="form-grp">
+      <input class="form-input" id="upi-id" placeholder="Enter UPI ID (e.g. user@upi)">
+    </div>
+
+    <!-- CARD -->
+    <div id="card-fields" class="form-grp" style="display:none;">
+      <input class="form-input" placeholder="Card Number">
+      <input class="form-input" placeholder="Expiry (MM/YY)">
+      <input class="form-input" placeholder="CVV">
+    </div>
+
+    <!-- NET BANKING -->
+    <div id="net-fields" class="form-grp" style="display:none;">
+      <input class="form-input" placeholder="Bank Name">
+      <input class="form-input" placeholder="User ID">
+      <input class="form-input" placeholder="Password">
+    </div>
+
+    <!-- PAY BUTTON -->
+    <button class="modal-action" onclick="processPayment()">Pay Now</button>
+
+  </div>
+</div>
 
 </body>
 </html>
